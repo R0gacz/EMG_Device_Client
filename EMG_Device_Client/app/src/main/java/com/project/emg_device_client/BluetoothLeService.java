@@ -46,8 +46,12 @@ class BluetoothLeService extends Service {
     public final static String ACTION_GATT_SERVICES_DISCOVERED =
             "com.example.bluetooth.le.ACTION_GATT_SERVICES_DISCOVERED";
     public final static String ACTION_DATA_AVAILABLE =
-            "com.example.bluetooth.le.ACTION_D";
+            "com.example.bluetooth.le.ACTION_DATA_AVAILABLE";
 
+    public final static String UUID_DEVICE_NAME = "2A00";
+    public final static String UUID_EMG_MEASUREMENT = "634f7246-d598-46d7-9e10-521163769297";
+    public final static String UUID_PLX_MEASUREMENT = "634f7246-d598-46d7-9e10-521163769296";
+    //TODO add all characteristics
 
     public List<BluetoothGattService> getSupportedGattServices() {
         if (bluetoothGatt == null) return null;
@@ -102,12 +106,15 @@ class BluetoothLeService extends Service {
 
 
     private final BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback() {
+        @SuppressLint("MissingPermission")
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 // successfully connected to the GATT Server
                 connectionState = STATE_CONNECTED;
                 broadcastUpdate(ACTION_GATT_CONNECTED);
+                // Attempts to discover services after successful connection.
+                bluetoothGatt.discoverServices();
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 // disconnected from the GATT Server
                 connectionState = STATE_DISCONNECTED;
@@ -146,23 +153,21 @@ class BluetoothLeService extends Service {
 
     private void broadcastUpdate(final String action,
                                  final BluetoothGattCharacteristic characteristic) {
+
         final Intent intent = new Intent(action);
 
-        // This is special handling for the Heart Rate Measurement profile. Data
-        // parsing is carried out as per profile specifications.
-        if (UUID_HEART_RATE_MEASUREMENT.equals(characteristic.getUuid())) {
-            int flag = characteristic.getProperties();
-            int format = -1;
-            if ((flag & 0x01) != 0) {
-                format = BluetoothGattCharacteristic.FORMAT_UINT16;
-                Log.d(TAG, "Heart rate format UINT16.");
-            } else {
-                format = BluetoothGattCharacteristic.FORMAT_UINT8;
-                Log.d(TAG, "Heart rate format UINT8.");
-            }
-            final int heartRate = characteristic.getIntValue(format, 1);
-            Log.d(TAG, String.format("Received heart rate: %d", heartRate));
-            intent.putExtra(EXTRA_DATA, String.valueOf(heartRate));
+        //TODO add handling for all GATT characteristics
+        if (UUID_EMG_MEASUREMENT.equals(characteristic.getUuid())) {
+            int format = BluetoothGattCharacteristic.FORMAT_UINT16;
+            final int emgValue = characteristic.getIntValue(format, 1);
+            Log.d(TAG, String.format("Received EMG: %d", emgValue));
+            intent.putExtra(EXTRA_DATA, String.valueOf(emgValue));
+        }
+        if (UUID_PLX_MEASUREMENT.equals(characteristic.getUuid())) {
+            int format = BluetoothGattCharacteristic.FORMAT_UINT16;
+            final int plxValue = characteristic.getIntValue(format, 1);
+            Log.d(TAG, String.format("Received EMG: %d", plxValue));
+            intent.putExtra(EXTRA_DATA, String.valueOf(plxValue));
         } else {
             // For all other profiles, writes the data formatted in HEX.
             final byte[] data = characteristic.getValue();

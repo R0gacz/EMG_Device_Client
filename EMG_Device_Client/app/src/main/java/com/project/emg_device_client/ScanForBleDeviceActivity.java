@@ -6,6 +6,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
@@ -45,6 +46,7 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
 
     ArrayList<AvailableDevice> arrAvailebleDev = new ArrayList<AvailableDevice>();
 
+    @SuppressLint("MissingPermission")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -81,6 +83,7 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
 
     // Device scan callback.
     private ScanCallback leScanCallback = new ScanCallback() {
+        @SuppressLint("MissingPermission")
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             super.onScanResult(callbackType, result);
@@ -197,6 +200,7 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
             startScanningButton.setText("STOP SCAN");
             startScanningButton.setSelected(true);
             AsyncTask.execute(new Runnable() {
+                @SuppressLint("MissingPermission")
                 @Override
                 public void run() {
                     btScanner.startScan(leScanCallback);
@@ -207,6 +211,7 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
             startScanningButton.setText("START SCAN");
             startScanningButton.setSelected(false);
             AsyncTask.execute(new Runnable() {
+                @SuppressLint("MissingPermission")
                 @Override
                 public void run() {
                     btScanner.stopScan(leScanCallback);

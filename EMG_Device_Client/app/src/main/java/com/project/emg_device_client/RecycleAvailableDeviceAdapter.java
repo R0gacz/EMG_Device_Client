@@ -52,8 +52,8 @@ public class RecycleAvailableDeviceAdapter extends RecyclerView.Adapter<RecycleA
 
             BluetoothLeService service = new BluetoothLeService();
             service.initialize();
-            Boolean isConnsected =  service.connect(bleDevice.macAddress);
-        if (isConnsected){
+            Boolean isConnected =  service.connect(bleDevice.macAddress);
+        if (isConnected){
             holder._connectBtn.setText("CONNECTED");
         }
         else {
