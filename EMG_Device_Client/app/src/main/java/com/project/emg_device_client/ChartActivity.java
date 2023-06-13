@@ -1,53 +1,25 @@
 package com.project.emg_device_client;
 
-import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.graphics.DashPathEffect;
-import android.graphics.Typeface;
-import android.graphics.drawable.Drawable;
-import android.net.Uri;
-import android.net.wifi.WifiNetworkSpecifier;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.WindowManager;
-import android.widget.SeekBar;
-import android.widget.TextView;
-
+import android.view.View;
+import android.widget.Button;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 
-import com.github.mikephil.charting.animation.Easing;
-import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Description;
 import com.github.mikephil.charting.components.Legend;
-import com.github.mikephil.charting.components.LimitLine;
-import com.github.mikephil.charting.components.XAxis;
-import com.github.mikephil.charting.components.YAxis;
-import com.github.mikephil.charting.data.BarData;
-import com.github.mikephil.charting.data.BarDataSet;
-import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
-import com.github.mikephil.charting.formatter.IFillFormatter;
-import com.github.mikephil.charting.highlight.Highlight;
-import com.github.mikephil.charting.interfaces.dataprovider.LineDataProvider;
-import com.github.mikephil.charting.interfaces.datasets.IBarDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
-import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
-import com.github.mikephil.charting.utils.ColorTemplate;
-import com.github.mikephil.charting.components.LimitLine.LimitLabelPosition;
-import com.github.mikephil.charting.utils.Utils;
-import android.widget.SeekBar.OnSeekBarChangeListener;
+import android.widget.Toast;
+
 import java.util.ArrayList;
-import java.util.List;
 
 public class ChartActivity extends AppCompatActivity{
         private LineChart chart;
+        private Button save, refresh, remove;
         private ArrayList<Entry> data1, data2;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,6 +28,10 @@ public class ChartActivity extends AppCompatActivity{
         setContentView(R.layout.chart_activity);
 
         chart = findViewById(R.id.chart1);
+
+        save = findViewById(R.id.save);
+        refresh = findViewById(R.id.refresh);
+        remove = findViewById(R.id.remove);
 
         data1 = new ArrayList<>();
         data1.add(new Entry(0,1));
@@ -68,6 +44,7 @@ public class ChartActivity extends AppCompatActivity{
         data2.add(new Entry(2, -3));
 
         setupChart();
+        setupLiseners();
     }
 
     private void setupChart()
@@ -102,5 +79,31 @@ public class ChartActivity extends AppCompatActivity{
         chart.setDrawBorders(true);
         chart.setData(data);
         chart.invalidate();
+    }
+
+    private void setupLiseners()
+    {
+        save.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(ChartActivity.this, "Data saved", Toast.LENGTH_LONG).show();
+                //TODO: Save data
+            }
+        });
+        refresh.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(ChartActivity.this, "Reloading...", Toast.LENGTH_LONG).show();
+                //TODO: Reload data
+            }
+        });
+
+        remove.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(ChartActivity.this, "Data removed", Toast.LENGTH_LONG).show();
+                // TODO: Remove data
+            }
+        });
     }
 }
