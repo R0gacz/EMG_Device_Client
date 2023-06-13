@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">EMG_Device_Client</string>
+    <string name="press_to_add_device">Press + to add device</string>
+    <string name="add_device_button">AddDeviceButton</string>
+    <string name="connect">Connect</string>
+    <string name="start_scan">Start Scan</string>
+    <string name="stop_scan">Stop Scan</string>
+    <string name="rssi_value">Rssi Value</string>
+    <string name="rssi">RSSI</string>
+    <string name="device_name">Device Name</string>
+    <string name="mac_address">MAC Address</string>
+    <string name="connect_to_device">CONNECT</string>
+</resources>
