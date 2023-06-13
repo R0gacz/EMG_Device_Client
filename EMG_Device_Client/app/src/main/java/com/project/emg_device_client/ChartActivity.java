@@ -1,5 +1,6 @@
 package com.project.emg_device_client;
 
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
@@ -13,9 +14,14 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
 import android.widget.Toast;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.List;
 
 public class ChartActivity extends AppCompatActivity{
         private LineChart chart;
@@ -87,14 +93,15 @@ public class ChartActivity extends AppCompatActivity{
             @Override
             public void onClick(View v) {
                 Toast.makeText(ChartActivity.this, "Data saved", Toast.LENGTH_LONG).show();
-                //TODO: Save data
+                saveData();
             }
         });
         refresh.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
                 Toast.makeText(ChartActivity.this, "Reloading...", Toast.LENGTH_LONG).show();
-                //TODO: Reload data
+                reloadData();
+                refreshChart();
             }
         });
 
@@ -102,8 +109,88 @@ public class ChartActivity extends AppCompatActivity{
             @Override
             public void onClick(View v) {
                 Toast.makeText(ChartActivity.this, "Data removed", Toast.LENGTH_LONG).show();
-                // TODO: Remove data
+                removeData();
+                chart.clear();
+                chart.invalidate();
             }
         });
+    }
+
+    private void refreshChart()
+    {
+        LineDataSet lineDataSet1 = new LineDataSet(data1, "Set 1");
+        lineDataSet1.setColor(Color.CYAN);
+        LineDataSet lineDataSet2 = new LineDataSet(data2, "Set 2");
+        lineDataSet2.setColor(Color.MAGENTA);
+
+        ArrayList<ILineDataSet> dataSet = new ArrayList<>();
+        dataSet.add(lineDataSet1);
+        dataSet.add(lineDataSet2);
+
+        LineData data = new LineData(dataSet);
+
+        chart.setData(data);
+
+        chart.notifyDataSetChanged();
+        chart.invalidate();
+    }
+
+    private void saveData()
+    {
+        Type type = new TypeToken<ArrayList<Entry>>() {}.getType();
+        String json_1, json_2;
+        ArrayList<Entry> temp = new ArrayList<>();
+        ArrayList<Entry> temp_2 = new ArrayList<>();
+
+        SharedPreferences sharedPreferences = getSharedPreferences("Data",MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+
+        Gson gson = new Gson();
+        if(sharedPreferences.contains("data1")) {
+            json_1 = sharedPreferences.getString("data1", null);
+            temp = gson.fromJson(json_1, type);
+        }
+        temp.addAll( data1 );
+        json_1 = gson.toJson( temp );
+
+        if(sharedPreferences.contains("data2")) {
+            json_2 = sharedPreferences.getString("data2", null);
+            temp_2 = gson.fromJson(json_2, type);
+        }
+        temp_2.addAll( data2 );
+        json_2 = gson.toJson( temp_2 );
+
+        editor.putString( "data1", json_1 );
+        editor.putString( "data2", json_2 );
+
+        editor.apply();
+    }
+
+    public void reloadData()
+    {
+        Type type = new TypeToken<List<String>>() {}.getType();
+
+        SharedPreferences sharedPreferences = getSharedPreferences("Data",MODE_PRIVATE);
+        Gson gson = new Gson();
+
+        if(sharedPreferences.contains("data1")) {
+            String json = sharedPreferences.getString("data1", null);
+            data1 = gson.fromJson(json, type);
+        }
+        if(sharedPreferences.contains("data2")) {
+            String json_2 = sharedPreferences.getString("data2", null);
+            data2 = gson.fromJson(json_2, type);
+        }
+    }
+
+    private void removeData()
+    {
+        SharedPreferences sharedPreferences = getSharedPreferences("Data",MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+
+        editor.remove("data1");
+        editor.remove( "data2" );
+
+        editor.apply();
     }
 }
