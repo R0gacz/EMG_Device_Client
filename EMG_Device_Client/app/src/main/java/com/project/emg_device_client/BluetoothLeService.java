@@ -31,7 +31,6 @@ public class BluetoothLeService extends Service {
 
     private int connectionState;
 
-
     class LocalBinder extends Binder {
         public BluetoothLeService getService() {
             return BluetoothLeService.this;
@@ -59,13 +58,12 @@ public class BluetoothLeService extends Service {
         return bluetoothGatt.getServices();
     }
 
-    @SuppressLint("MissingPermission")
-    public void readCharacteristic(BluetoothGattCharacteristic characteristic) {
-        if (bluetoothGatt == null) {
-            Log.w(TAG, "BluetoothGatt not initialized");
-            return;
-        }
-        bluetoothGatt.readCharacteristic(characteristic);
+    public BluetoothGattCharacteristic getCharacteristicByUuid(String serviceUuid, String characteristicUuid){
+        List<BluetoothGattService> services = bluetoothGatt.getServices();
+        if (bluetoothGatt == null) return null;
+        BluetoothGattService service = bluetoothGatt.getService(UUID.fromString(serviceUuid));
+        if (service == null) return null;
+        return service.getCharacteristic(UUID.fromString(characteristicUuid));
     }
 
     @Nullable
@@ -84,6 +82,14 @@ public class BluetoothLeService extends Service {
     }
 
 
+    @SuppressLint("MissingPermission")
+    public void readCharacteristic(BluetoothGattCharacteristic characteristic) {
+        if (bluetoothGatt == null) {
+            Log.w(TAG, "BluetoothGatt not initialized");
+            return;
+        }
+        bluetoothGatt.readCharacteristic(characteristic);
+    }
 
     @SuppressLint("MissingPermission")
     public void setCharacteristicNotification(BluetoothGattCharacteristic characteristic,
@@ -92,14 +98,12 @@ public class BluetoothLeService extends Service {
             Log.w(TAG, "BluetoothAdapter not initialized");
             return;
         }
-        bluetoothGatt.setCharacteristicNotification(characteristic, enabled);
-        // This is specific to Heart Rate Measurement.
-        if (UUID_EMG_MEASUREMENT.equals(characteristic.getUuid())) {
             BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
                     UUID.fromString(GattAttributes.CLIENT_CHARACTERISTIC_CONFIG));
             descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
             bluetoothGatt.writeDescriptor(descriptor);
-        }
+
+        bluetoothGatt.setCharacteristicNotification(characteristic, enabled);
     }
 
     @SuppressLint("MissingPermission")
@@ -118,12 +122,6 @@ public class BluetoothLeService extends Service {
             return false;
         }
     }
-
-    private void broadcastUpdate(final String action) {
-        final Intent intent = new Intent(action);
-        sendBroadcast(intent);
-    }
-
 
     private final BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback() {
         @SuppressLint("MissingPermission")
@@ -171,33 +169,27 @@ public class BluetoothLeService extends Service {
         }
     };
 
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        return START_STICKY;
+    }
+
+    private void broadcastUpdate(final String action) {
+        final Intent intent = new Intent(action);
+        sendBroadcast(intent);
+    }
+
     private void broadcastUpdate(final String action,
                                  final BluetoothGattCharacteristic characteristic) {
 
         final Intent intent = new Intent(action);
-
-        //TODO add handling for all GATT characteristics
-        if (UUID_EMG_MEASUREMENT.equals(characteristic.getUuid())) {
-            int format = BluetoothGattCharacteristic.FORMAT_UINT16;
-            final int emgValue = characteristic.getIntValue(format, 1);
-            Log.d(TAG, String.format("Received EMG: %d", emgValue));
-            intent.putExtra(EXTRA_DATA, String.valueOf(emgValue));
-        }
-        if (UUID_PLX_MEASUREMENT.equals(characteristic.getUuid())) {
-            int format = BluetoothGattCharacteristic.FORMAT_UINT16;
-            final int plxValue = characteristic.getIntValue(format, 1);
-            Log.d(TAG, String.format("Received EMG: %d", plxValue));
-            intent.putExtra(EXTRA_DATA, String.valueOf(plxValue));
-        } else {
-            // For all other profiles, writes the data formatted in HEX.
             final byte[] data = characteristic.getValue();
             if (data != null && data.length > 0) {
                 final StringBuilder stringBuilder = new StringBuilder(data.length);
                 for(byte byteChar : data)
                     stringBuilder.append(String.format("%02X ", byteChar));
-                intent.putExtra(EXTRA_DATA, new String(data) + "\n" +
+                intent.putExtra(EXTRA_DATA, characteristic.getUuid().toString() + "\n" +
                         stringBuilder.toString());
-            }
         }
         sendBroadcast(intent);
     }

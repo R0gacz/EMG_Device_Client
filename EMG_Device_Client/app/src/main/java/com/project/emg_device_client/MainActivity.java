@@ -1,9 +1,19 @@
 package com.project.emg_device_client;
 
+import static androidx.constraintlayout.helper.widget.MotionEffect.TAG;
+
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.IBinder;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
@@ -28,8 +38,27 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
 
     private LineChart chart;
-    private Button save, refresh, remove;
+    private Button save, refresh, remove, startMeasureButton;
+    FloatingActionButton addDeviceButton;
     private ArrayList<Entry> data1, data2;
+    private BluetoothLeService bleLeService;
+    private String connectedDeviceAddres;
+
+    private final ServiceConnection mServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder service) {
+            bleLeService = ((BluetoothLeService.LocalBinder) service).getService();
+            if (!bleLeService.initialize()) {
+                return;
+            }
+            // Automatically connects to the device upon successful start-up initialization.
+            bleLeService.connect(connectedDeviceAddres);
+        }
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            bleLeService = null;
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,11 +70,17 @@ public class MainActivity extends AppCompatActivity {
         save = findViewById(R.id.save);
         refresh = findViewById(R.id.refresh);
         remove = findViewById(R.id.remove);
+        startMeasureButton = findViewById(R.id.StartMeasureButton);
+        addDeviceButton = (FloatingActionButton) findViewById(R.id.addDeviceButton);
+        bleLeService = null;
+        connectedDeviceAddres = null;
 
         data1 = new ArrayList<>();
         data1.add(new Entry(0,1));
         data1.add(new Entry(1,2));
         data1.add(new Entry(2,4));
+        data1.add(new Entry(3, 2));
+        data1.add(new Entry(4, 2));
 
         data2 = new ArrayList<>();
         data2.add(new Entry(0,3));
@@ -55,16 +90,14 @@ public class MainActivity extends AppCompatActivity {
         setupChart();
         setupLiseners();
 
-        FloatingActionButton addDeviceButton = (FloatingActionButton) findViewById(R.id.addDeviceButton);
-
-
         addDeviceButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                startActivity(new Intent(MainActivity.this,
-                        ScanForBleDeviceActivity.class).putExtra("data1", data1).putExtra("data2", data2));
+                startActivityForResult(new Intent(MainActivity.this,
+                        ScanForBleDeviceActivity.class), 1);
             }
         });
+
     }
 
     private void setupChart()
@@ -126,6 +159,13 @@ public class MainActivity extends AppCompatActivity {
                 removeData();
                 chart.clear();
                 chart.invalidate();
+            }
+        });
+
+
+        startMeasureButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                startMeasure();
             }
         });
     }
@@ -206,6 +246,94 @@ public class MainActivity extends AppCompatActivity {
         editor.remove( "data2" );
 
         editor.apply();
+    }
+
+    public void startMeasure(){
+        if (bleLeService == null) return;
+        BluetoothGattCharacteristic currTime = bleLeService.getCharacteristicByUuid(GattAttributes.UUID_CURRENT_TIME_SERVICE, GattAttributes.UUID_CURRENT_TIME);
+        BluetoothGattCharacteristic emgMeasurment = bleLeService.getCharacteristicByUuid(GattAttributes.UUID_TIMESTAMPED_DATA_SERVICE, GattAttributes.UUID_EMG_MEASUREMENT);
+        BluetoothGattCharacteristic plxMeasurment = bleLeService.getCharacteristicByUuid(GattAttributes.UUID_TIMESTAMPED_DATA_SERVICE, GattAttributes.UUID_PLX_MEASUREMENT);
+
+        if (currTime != null) bleLeService.setCharacteristicNotification(currTime,true);
+        if (emgMeasurment != null) bleLeService.setCharacteristicNotification(emgMeasurment,true);
+        if (plxMeasurment != null) bleLeService.setCharacteristicNotification(plxMeasurment,true);
+    }
+
+    private void addValueToMeasureArray(String characteristicUuid, byte[] data){
+
+        int timestamp = 0;
+        int value = 0;
+
+        int length = data.length;
+
+        for (int i = 0; i < 8; i++) {
+            data[length - i - 1] = (byte) (timestamp & 0xFF);
+            timestamp >>= 8;
+        }
+
+        if(characteristicUuid.equals(GattAttributes.UUID_EMG_MEASUREMENT)) data1.add(new Entry(timestamp, value));
+        if(characteristicUuid.equals(GattAttributes.UUID_PLX_MEASUREMENT)) data2.add(new Entry(timestamp, value));
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == 1) {
+//            if (resultCode == Activity.RESULT_OK) {
+
+//                String addres = data.("connectedBleDevice");  TODO get data as null
+                connectedDeviceAddres = "58:8E:81:A5:46:9A";
+                if(connectedDeviceAddres == null) return;
+                Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
+                bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
+//            }
+        }
+    }
+
+    private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+            if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
+//                mConnected = true;
+//                updateConnectionState(R.string.connected);
+                invalidateOptionsMenu();
+            } else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
+//                mConnected = false;
+//                updateConnectionState(R.string.disconnected);
+                invalidateOptionsMenu();
+//            } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
+//                // Show all the supported services and characteristics on the user interface.
+//                displayGattServices(mBluetoothLeService.getSupportedGattServices());
+            } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
+                String[] data = intent.getStringExtra(BluetoothLeService.EXTRA_DATA).split("\n");
+                addValueToMeasureArray(data[0], data[1].getBytes());
+            }
+        }
+    };
+
+    protected void onResume() {
+        super.onResume();
+        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
+        if (bleLeService != null) {
+            final boolean result = bleLeService.connect(connectedDeviceAddres);
+            Log.d(TAG, "Connect request result=" + result);
+        }
+    }
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(mGattUpdateReceiver);
+    }
+
+    private static IntentFilter makeGattUpdateIntentFilter() {
+        final IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(BluetoothLeService.ACTION_GATT_CONNECTED);
+        intentFilter.addAction(BluetoothLeService.ACTION_GATT_DISCONNECTED);
+        intentFilter.addAction(BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED);
+        intentFilter.addAction(BluetoothLeService.ACTION_DATA_AVAILABLE);
+        return intentFilter;
     }
 
 }

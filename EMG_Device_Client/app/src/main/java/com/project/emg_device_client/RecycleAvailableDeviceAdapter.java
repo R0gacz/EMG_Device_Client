@@ -18,10 +18,11 @@ public class RecycleAvailableDeviceAdapter extends RecyclerView.Adapter<RecycleA
     Context _context;
     ArrayList<AvailableDevice> _arrDevices;
     public BluetoothDevice connectedDevice;
+    public BluetoothLeService bleService;
 
     public RecycleAvailableDeviceAdapter(Context context, ArrayList<AvailableDevice> arrDevices){
 
-
+        bleService = null;
         connectedDevice = null;
         _context = context;
         _arrDevices = arrDevices;
@@ -50,30 +51,15 @@ public class RecycleAvailableDeviceAdapter extends RecyclerView.Adapter<RecycleA
             public void onClick(View v) {
                 connectedDevice = bleDevice.device;
                 holder._connectBtn.setText("CONNECTED");
+                connectedDevice = bleDevice.device;
 //                ConnectToDevice(bleDevice, holder);
             }
         });
     }
 
-
-    private void ConnectToDevice(AvailableDevice bleDevice, ViewHolder holder){
-        connectedDevice = bleDevice.device;
-            BluetoothLeService service = new BluetoothLeService();
-            service.initialize();
-            Boolean isConnected =  service.connect(bleDevice.macAddress);
-        if (isConnected){
-            holder._connectBtn.setText("DISCONNECT");
-        }
-        else {
-//            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-//            builder.setTitle("Connection attempt failed");
-//            builder.setPositiveButton(android.R.string.ok, null);
-//            builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
-//            });
-//            builder.show();
-            holder._connectBtn.setText("CONNECT");
-        }
-    }
+//    private void ConnectToDevice(AvailableDevice bleDevice, ViewHolder holder){
+//
+//    }
 
     @Override
     public int getItemCount() {
@@ -93,10 +79,6 @@ public class RecycleAvailableDeviceAdapter extends RecyclerView.Adapter<RecycleA
             _txtRssiValue = itemView.findViewById(R.id.rssiValue);
             _connectBtn = (Button) itemView.findViewById(R.id.connectBtn);
         }
-
-
-
-
 
     }
 }

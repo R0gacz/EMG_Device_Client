@@ -1,7 +1,10 @@
 package com.project.emg_device_client;
 
+import static androidx.constraintlayout.helper.widget.MotionEffect.TAG;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -9,13 +12,17 @@ import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Looper;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
@@ -38,6 +45,8 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
     BluetoothAdapter btAdapter;
     BluetoothLeScanner btLeScanner;
     Button startScanningButton;
+    Button gattServiceButton;
+    Button startMeasureButton;
     RecyclerView recyclerAvailableDevices;
     RecycleAvailableDeviceAdapter availableDeviceAdapter;
     private static final int REQUEST_ENABLE_BT = 1;
@@ -48,7 +57,7 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_BLUETOOTH_CONNECT = 5;
 
     ArrayList<AvailableDevice> arrAvailebleDev = new ArrayList<AvailableDevice>();
-    private ArrayList<Entry> emgData, plxData;
+    public BluetoothLeService bleService;
 
     @SuppressLint("MissingPermission")
     @Override
@@ -56,9 +65,8 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_scan_for_ble_device);
 
-        Bundle b = getIntent().getExtras();
-        this.emgData = b.getParcelableArrayList("data1");
-        this.plxData = b.getParcelableArrayList("data2");
+
+        Measurement.plxData.add(new Entry(5, 2));
 
         recyclerAvailableDevices = findViewById(R.id.recyclerAvailableDevices);
         recyclerAvailableDevices.setLayoutManager(new LinearLayoutManager(this));
@@ -67,7 +75,7 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
         recyclerAvailableDevices.setAdapter(availableDeviceAdapter);
 
 
-        Button gattServiceButton = (Button) findViewById(R.id.ConnectToGattServiceButton);
+        gattServiceButton = (Button) findViewById(R.id.ConnectToGattServiceButton);
         gattServiceButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 connectToBleService(availableDeviceAdapter.connectedDevice);
@@ -98,6 +106,15 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
 
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Intent resultIntent = new Intent();
+
+        resultIntent.putExtra("connectedBleDevice", availableDeviceAdapter.connectedDevice);
+        setResult(Activity.RESULT_OK, resultIntent);
+    }
+
     @SuppressLint("MissingPermission")
     protected void connectToBleService(BluetoothDevice device) {
         if (device == null) return;
@@ -107,10 +124,25 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
         if (startScanningButton.isSelected()) {
             changeScanningStatus();
         }
-        startActivity(intent);
+        startActivityForResult(intent, 1);
     }
 
-
+    private final ServiceConnection mServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder service) {
+            bleService = ((BluetoothLeService.LocalBinder) service).getService();
+            if (!bleService.initialize()) {
+                Log.e(TAG, "Unable to initialize Bluetooth");
+                finish();
+            }
+            // Automatically connects to the device upon successful start-up initialization.
+            bleService.connect(availableDeviceAdapter.connectedDevice.getAddress());
+        }
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            bleService = null;
+        }
+    };
 
     private void PermissionRequestLauncher() {
         if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {

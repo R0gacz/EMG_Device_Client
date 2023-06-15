@@ -20,6 +20,7 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="1.0" />
 
+
     <Button
         android:id="@+id/ConnectToGattServiceButton"
         android:layout_width="146dp"
