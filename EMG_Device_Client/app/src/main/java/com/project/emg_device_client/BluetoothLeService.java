@@ -1,7 +1,5 @@
 package com.project.emg_device_client;
 
-import static android.nfc.NfcAdapter.EXTRA_DATA;
-
 import android.annotation.SuppressLint;
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
@@ -9,6 +7,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
@@ -19,8 +18,9 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 
 import java.util.List;
+import java.util.UUID;
 
-class BluetoothLeService extends Service {
+public class BluetoothLeService extends Service {
 
     private Binder binder = new LocalBinder();
     private BluetoothAdapter bluetoothAdapter;
@@ -47,11 +47,12 @@ class BluetoothLeService extends Service {
             "com.example.bluetooth.le.ACTION_GATT_SERVICES_DISCOVERED";
     public final static String ACTION_DATA_AVAILABLE =
             "com.example.bluetooth.le.ACTION_DATA_AVAILABLE";
+    public final static String EXTRA_DATA =
+            "com.example.bluetooth.le.EXTRA_DATA";
 
     public final static String UUID_DEVICE_NAME = "2A00";
     public final static String UUID_EMG_MEASUREMENT = "634f7246-d598-46d7-9e10-521163769297";
     public final static String UUID_PLX_MEASUREMENT = "634f7246-d598-46d7-9e10-521163769296";
-    //TODO add all characteristics
 
     public List<BluetoothGattService> getSupportedGattServices() {
         if (bluetoothGatt == null) return null;
@@ -80,6 +81,25 @@ class BluetoothLeService extends Service {
             return false;
         }
         return true;
+    }
+
+
+
+    @SuppressLint("MissingPermission")
+    public void setCharacteristicNotification(BluetoothGattCharacteristic characteristic,
+                                              boolean enabled) {
+        if (bluetoothAdapter == null || bluetoothGatt == null) {
+            Log.w(TAG, "BluetoothAdapter not initialized");
+            return;
+        }
+        bluetoothGatt.setCharacteristicNotification(characteristic, enabled);
+        // This is specific to Heart Rate Measurement.
+        if (UUID_EMG_MEASUREMENT.equals(characteristic.getUuid())) {
+            BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
+                    UUID.fromString(GattAttributes.CLIENT_CHARACTERISTIC_CONFIG));
+            descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+            bluetoothGatt.writeDescriptor(descriptor);
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -197,6 +217,16 @@ class BluetoothLeService extends Service {
         bluetoothGatt.close();
         bluetoothGatt = null;
     }
+
+    @SuppressLint("MissingPermission")
+    public void disconnect() {
+        if (bluetoothAdapter == null || bluetoothGatt == null) {
+            Log.w(TAG, "BluetoothAdapter not initialized");
+            return;
+        }
+        bluetoothGatt.disconnect();
+    }
+
 }
 
 

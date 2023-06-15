@@ -1,9 +1,7 @@
 package com.project.emg_device_client;
 
-import android.app.AlertDialog;
+import android.bluetooth.BluetoothDevice;
 import android.content.Context;
-import android.content.DialogInterface;
-import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,8 +17,12 @@ public class RecycleAvailableDeviceAdapter extends RecyclerView.Adapter<RecycleA
 
     Context _context;
     ArrayList<AvailableDevice> _arrDevices;
+    public BluetoothDevice connectedDevice;
 
     public RecycleAvailableDeviceAdapter(Context context, ArrayList<AvailableDevice> arrDevices){
+
+
+        connectedDevice = null;
         _context = context;
         _arrDevices = arrDevices;
     }
@@ -39,22 +41,28 @@ public class RecycleAvailableDeviceAdapter extends RecyclerView.Adapter<RecycleA
         holder._txtDeviceName.setText(bleDevice.name);
         holder._txtMacAddress.setText(bleDevice.macAddress);
         holder._txtRssiValue.setText(Integer.toString(bleDevice.rssi));
+        if (connectedDevice != null) {
+            if ((connectedDevice.getAddress()).equals(bleDevice.device.getAddress()))
+                holder._connectBtn.setText("CONNECTED");
+            else holder._connectBtn.setText("CONNECT");
+        }
         holder._connectBtn.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                holder._connectBtn.setText("Connecting");
-                ConnectToDevice(bleDevice, holder);
+                connectedDevice = bleDevice.device;
+                holder._connectBtn.setText("CONNECTED");
+//                ConnectToDevice(bleDevice, holder);
             }
         });
     }
 
 
     private void ConnectToDevice(AvailableDevice bleDevice, ViewHolder holder){
-
+        connectedDevice = bleDevice.device;
             BluetoothLeService service = new BluetoothLeService();
             service.initialize();
             Boolean isConnected =  service.connect(bleDevice.macAddress);
         if (isConnected){
-            holder._connectBtn.setText("CONNECTED");
+            holder._connectBtn.setText("DISCONNECT");
         }
         else {
 //            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -63,7 +71,7 @@ public class RecycleAvailableDeviceAdapter extends RecyclerView.Adapter<RecycleA
 //            builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
 //            });
 //            builder.show();
-            holder._connectBtn.setText("DisCONNECT");
+            holder._connectBtn.setText("CONNECT");
         }
     }
 
