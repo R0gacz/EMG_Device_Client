@@ -1,19 +1,10 @@
 package com.project.emg_device_client;
 
-import android.content.BroadcastReceiver;
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
-
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.github.mikephil.charting.charts.LineChart;
@@ -23,37 +14,23 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+
+import android.widget.Toast;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
-
-    private LineChart chart;
-    private Button save, refresh, remove, startMeasureButton;
-    FloatingActionButton addDeviceButton;
-    private ArrayList<Entry> emgData, plxData;
-    private EmgDeviceService emgDeviceService;
-    public static String MacAddress;
-
-    private final ServiceConnection serviceConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName componentName, IBinder service) {
-            emgDeviceService = ((EmgDeviceService.DeviceLocalBinder) service).getService();
-        }
-        @Override
-        public void onServiceDisconnected(ComponentName componentName) {
-            emgDeviceService = null;
-        }
-    };
-
+public class ChartActivity extends AppCompatActivity{
+        private LineChart chart;
+        private Button save, refresh, remove;
+        private ArrayList<Entry> data1, data2;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.chart_activity);
 
         chart = findViewById(R.id.chart1);
@@ -61,27 +38,27 @@ public class MainActivity extends AppCompatActivity {
         save = findViewById(R.id.save);
         refresh = findViewById(R.id.refresh);
         remove = findViewById(R.id.remove);
-        startMeasureButton = findViewById(R.id.StartMeasureButton);
-        addDeviceButton = findViewById(R.id.addDeviceButton);
 
-        emgData = new ArrayList<>();
-        emgData.add(new Entry(0,0));
+        data1 = new ArrayList<>();
+        data1.add(new Entry(0,1));
+        data1.add(new Entry(1,2));
+        data1.add(new Entry(2,4));
 
-        plxData = new ArrayList<>();
-        plxData.add(new Entry(0,0));
-
+        data2 = new ArrayList<>();
+        data2.add(new Entry(0,3));
+        data2.add(new Entry(1,0));
+        data2.add(new Entry(2, -3));
 
         setupChart();
         setupLiseners();
-
     }
 
     private void setupChart()
     {
         chart.animateX(3000);
-        LineDataSet lineDataSet1 = new LineDataSet(emgData, "Set 1");
+        LineDataSet lineDataSet1 = new LineDataSet(data1, "Set 1");
         lineDataSet1.setColor(Color.CYAN);
-        LineDataSet lineDataSet2 = new LineDataSet(plxData, "Set 2");
+        LineDataSet lineDataSet2 = new LineDataSet(data2, "Set 2");
         lineDataSet2.setColor(Color.MAGENTA);
 
         ArrayList<ILineDataSet> dataSet = new ArrayList<>();
@@ -115,14 +92,14 @@ public class MainActivity extends AppCompatActivity {
         save.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(MainActivity.this, "Data saved", Toast.LENGTH_LONG).show();
+                Toast.makeText(ChartActivity.this, "Data saved", Toast.LENGTH_LONG).show();
                 saveData();
             }
         });
         refresh.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                Toast.makeText(MainActivity.this, "Reloading...", Toast.LENGTH_LONG).show();
+                Toast.makeText(ChartActivity.this, "Reloading...", Toast.LENGTH_LONG).show();
                 reloadData();
                 refreshChart();
             }
@@ -131,33 +108,19 @@ public class MainActivity extends AppCompatActivity {
         remove.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(MainActivity.this, "Data removed", Toast.LENGTH_LONG).show();
+                Toast.makeText(ChartActivity.this, "Data removed", Toast.LENGTH_LONG).show();
                 removeData();
                 chart.clear();
                 chart.invalidate();
-            }
-        });
-
-        startMeasureButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                StartMeasure();
-            }
-        });
-
-        addDeviceButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                startActivityForResult(new Intent(MainActivity.this,
-                        ScanForBleDeviceActivity.class), 1);
             }
         });
     }
 
     private void refreshChart()
     {
-        LineDataSet lineDataSet1 = new LineDataSet(emgData, "Set 1");
+        LineDataSet lineDataSet1 = new LineDataSet(data1, "Set 1");
         lineDataSet1.setColor(Color.CYAN);
-        LineDataSet lineDataSet2 = new LineDataSet(plxData, "Set 2");
+        LineDataSet lineDataSet2 = new LineDataSet(data2, "Set 2");
         lineDataSet2.setColor(Color.MAGENTA);
 
         ArrayList<ILineDataSet> dataSet = new ArrayList<>();
@@ -187,14 +150,14 @@ public class MainActivity extends AppCompatActivity {
             json_1 = sharedPreferences.getString("data1", null);
             temp = gson.fromJson(json_1, type);
         }
-        temp.addAll( emgData );
+        temp.addAll( data1 );
         json_1 = gson.toJson( temp );
 
         if(sharedPreferences.contains("data2")) {
             json_2 = sharedPreferences.getString("data2", null);
             temp_2 = gson.fromJson(json_2, type);
         }
-        temp_2.addAll( plxData );
+        temp_2.addAll( data2 );
         json_2 = gson.toJson( temp_2 );
 
         editor.putString( "data1", json_1 );
@@ -212,11 +175,11 @@ public class MainActivity extends AppCompatActivity {
 
         if(sharedPreferences.contains("data1")) {
             String json = sharedPreferences.getString("data1", null);
-            emgData = gson.fromJson(json, type);
+            data1 = gson.fromJson(json, type);
         }
         if(sharedPreferences.contains("data2")) {
             String json_2 = sharedPreferences.getString("data2", null);
-            plxData = gson.fromJson(json_2, type);
+            data2 = gson.fromJson(json_2, type);
         }
     }
 
@@ -229,71 +192,5 @@ public class MainActivity extends AppCompatActivity {
         editor.remove( "data2" );
 
         editor.apply();
-    }
-
-    private void StartMeasure(){
-        if(emgDeviceService != null){
-            emgDeviceService.startTimeDataLogging();
-            emgDeviceService.startEmgDataLogging();
-            emgDeviceService.startPlxDataLogging();
-        }
-        else
-        {
-            //TODO device disconnected info
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        unbindService(serviceConnection);
-        emgDeviceService = null;
-    }
-
-    protected void onResume() {
-        super.onResume();
-        registerReceiver(dataUpdateReceiver, makeDataUpdateIntentFilter());
-        if(MacAddress != null && emgDeviceService == null) {
-            Intent deviceServiceIntent = new Intent(this, EmgDeviceService.class);
-            bindService(deviceServiceIntent, serviceConnection, BIND_AUTO_CREATE);
-        }
-    }
-    @Override
-    protected void onPause() {
-        super.onPause();
-        unregisterReceiver(dataUpdateReceiver);
-    }
-
-    private final BroadcastReceiver dataUpdateReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            final String action = intent.getAction();
-            byte[] data = intent.getByteArrayExtra(action);
-            Entry entry;
-          switch (action){
-                case EmgDeviceService.ACTION_EMG_DATA_RECEIVED:
-                    entry = emgDeviceService.EmgDataBytesToEntry(data);
-                    emgData.add(entry);
-                    break;
-                case EmgDeviceService.ACTION_PLX_DATA_RECEIVED:
-                    entry = emgDeviceService.PlxDataBytesToEntry(data);
-                    plxData.add(entry);
-                    break;
-              default:
-                    break;
-
-            }
-            if (EmgDeviceService.ACTION_EMG_DATA_RECEIVED.equals(action)) {
-
-            }
-        }
-    };
-
-    private static IntentFilter makeDataUpdateIntentFilter() {
-        final IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(EmgDeviceService.ACTION_EMG_DATA_RECEIVED);
-        intentFilter.addAction(EmgDeviceService.ACTION_PLX_DATA_RECEIVED);
-        intentFilter.addAction(EmgDeviceService.ACTION_TIME_DATA_RECEIVED);
-        return intentFilter;
     }
 }
