@@ -45,6 +45,9 @@
                 android:name="android.app.lib_name"
                 android:value="" />
         </activity>
+        <activity android:name=".DeviceControlActivity"/>
+        <service android:name=".BluetoothLeService" android:enabled="true"/>
+        <service android:name=".EmgDeviceService" android:enabled="true"/>
     </application>
 
 </manifest>

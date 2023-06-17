@@ -1,14 +1,11 @@
 package com.project.emg_device_client;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
@@ -17,26 +14,32 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.os.AsyncTask;
-//import android.support.v4.app.ActivityCompat;
-//import android.support.v4.content.ContextCompat;
-//import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.widget.Button;
 
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 public class ScanForBleDeviceActivity extends AppCompatActivity {
 
-    BluetoothManager btManager;
+    ExecutorService executor;
+    Handler handler;
     BluetoothAdapter btAdapter;
-    BluetoothLeScanner btScanner;
+    BluetoothLeScanner btLeScanner;
     Button startScanningButton;
+    Button gattServiceButton;
     RecyclerView recyclerAvailableDevices;
-    RecycleAvailableDeviceAdapter availableDeviceadapter;
+    RecycleAvailableDeviceAdapter availableDeviceAdapter;
     private static final int REQUEST_ENABLE_BT = 1;
     private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
     private static final int PERMISSION_REQUEST_FINE_LOCATION = 2;
@@ -45,6 +48,7 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_BLUETOOTH_CONNECT = 5;
 
     ArrayList<AvailableDevice> arrAvailebleDev = new ArrayList<AvailableDevice>();
+    public BluetoothLeService bleService;
 
     @SuppressLint("MissingPermission")
     @Override
@@ -55,8 +59,15 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
         recyclerAvailableDevices = findViewById(R.id.recyclerAvailableDevices);
         recyclerAvailableDevices.setLayoutManager(new LinearLayoutManager(this));
 
-        availableDeviceadapter = new RecycleAvailableDeviceAdapter(this, arrAvailebleDev);
-        recyclerAvailableDevices.setAdapter(availableDeviceadapter);
+        availableDeviceAdapter = new RecycleAvailableDeviceAdapter(this, arrAvailebleDev);
+        recyclerAvailableDevices.setAdapter(availableDeviceAdapter);
+
+        gattServiceButton = (Button) findViewById(R.id.ConnectToGattServiceButton);
+        gattServiceButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                connectToBleService(availableDeviceAdapter.connectedDevice);
+            }
+        });
 
         startScanningButton = (Button) findViewById(R.id.StartScanButton);
         startScanningButton.setOnClickListener(new View.OnClickListener() {
@@ -65,10 +76,11 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
             }
         });
 
+        executor = Executors.newSingleThreadExecutor();
+        handler = new Handler(Looper.getMainLooper());
 
-        btManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
-        btAdapter = btManager.getAdapter();
-        btScanner = btAdapter.getBluetoothLeScanner();
+        btAdapter = ((BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE)).getAdapter();
+        btLeScanner = btAdapter.getBluetoothLeScanner();
 
 
         if (btAdapter != null && !btAdapter.isEnabled()) {
@@ -81,30 +93,26 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
 
     }
 
-    // Device scan callback.
-    private ScanCallback leScanCallback = new ScanCallback() {
-        @SuppressLint("MissingPermission")
-        @Override
-        public void onScanResult(int callbackType, ScanResult result) {
-            super.onScanResult(callbackType, result);
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Intent resultIntent = new Intent();
 
-            boolean alreadyPresent = false;
-            for (AvailableDevice device : arrAvailebleDev){
-                if(device.macAddress.equals(result.getDevice().getAddress())){
-                    alreadyPresent = true;
-                    break;
-                }
-                else {
-                    device.rssi = result.getRssi();
-                    device.name = result.getDevice().getName();
-                }
-            }
-            if (!alreadyPresent) {
-                arrAvailebleDev.add(new AvailableDevice(result));
-            }
-            availableDeviceadapter.notifyDataSetChanged();
+        resultIntent.putExtra("connectedBleDevice", availableDeviceAdapter.connectedDevice);
+        setResult(Activity.RESULT_OK, resultIntent);
+    }
+
+    @SuppressLint("MissingPermission")
+    protected void connectToBleService(BluetoothDevice device) {
+        if (device == null) return;
+        final Intent intent = new Intent(this, DeviceControlActivity.class);
+        intent.putExtra(DeviceControlActivity.EXTRAS_DEVICE_NAME, device.getName());
+        intent.putExtra(DeviceControlActivity.EXTRAS_DEVICE_ADDRESS, device.getAddress());
+        if (startScanningButton.isSelected()) {
+            changeScanningStatus();
         }
-    };
+        startActivityForResult(intent, 1);
+    }
 
     private void PermissionRequestLauncher() {
         if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -172,10 +180,6 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
                 }
                 return;
             }
-
-
-
-
         }
     }
     private void ShowLimitedFunctionalityAlertDialogAndFinishActivity(String permissionName){
@@ -192,32 +196,56 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
     });
         builder.show();
 }
-
     public void changeScanningStatus() {
         if (!startScanningButton.isSelected()) {
             arrAvailebleDev.clear();
             System.out.println("start scanning");
             startScanningButton.setText("STOP SCAN");
             startScanningButton.setSelected(true);
-            AsyncTask.execute(new Runnable() {
+            executor.execute(new Runnable() {
                 @SuppressLint("MissingPermission")
                 @Override
                 public void run() {
-                    btScanner.startScan(leScanCallback);
+                    btLeScanner.startScan(leScanCallback);
                 }
             });
         } else {
             System.out.println("stopping scanning");
             startScanningButton.setText("START SCAN");
             startScanningButton.setSelected(false);
-            AsyncTask.execute(new Runnable() {
+            executor.execute(new Runnable() {
                 @SuppressLint("MissingPermission")
                 @Override
                 public void run() {
-                    btScanner.stopScan(leScanCallback);
+                    btLeScanner.stopScan(leScanCallback);
                 }
 
             });
         }
     }
+
+    private ScanCallback leScanCallback = new ScanCallback() {
+        @SuppressLint("MissingPermission")
+        @Override
+        public void onScanResult(int callbackType, ScanResult result) {
+            super.onScanResult(callbackType, result);
+
+            boolean alreadyPresent = false;
+            if (result.getDevice().getName() != null) {
+
+            for (AvailableDevice device : arrAvailebleDev){
+                if(device.macAddress.equals(result.getDevice().getAddress())){
+                    alreadyPresent = true;
+                    device.rssi = result.getRssi();
+                    device.name = result.getDevice().getName();
+                    break;
+                }
+            }
+            if (!alreadyPresent) {
+                arrAvailebleDev.add(new AvailableDevice(result));
+            }
+            availableDeviceAdapter.notifyDataSetChanged();
+            }
+        }
+    };
 }

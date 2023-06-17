@@ -1,9 +1,7 @@
 package com.project.emg_device_client;
 
-import android.app.AlertDialog;
+import android.bluetooth.BluetoothDevice;
 import android.content.Context;
-import android.content.DialogInterface;
-import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,8 +17,13 @@ public class RecycleAvailableDeviceAdapter extends RecyclerView.Adapter<RecycleA
 
     Context _context;
     ArrayList<AvailableDevice> _arrDevices;
+    public BluetoothDevice connectedDevice;
+    public BluetoothLeService bleService;
 
     public RecycleAvailableDeviceAdapter(Context context, ArrayList<AvailableDevice> arrDevices){
+
+        bleService = null;
+        connectedDevice = null;
         _context = context;
         _arrDevices = arrDevices;
     }
@@ -39,32 +42,18 @@ public class RecycleAvailableDeviceAdapter extends RecyclerView.Adapter<RecycleA
         holder._txtDeviceName.setText(bleDevice.name);
         holder._txtMacAddress.setText(bleDevice.macAddress);
         holder._txtRssiValue.setText(Integer.toString(bleDevice.rssi));
+        if (connectedDevice != null) {
+            if ((connectedDevice.getAddress()).equals(bleDevice.device.getAddress()))
+                holder._connectBtn.setText("CONNECTED");
+            else holder._connectBtn.setText("CONNECT");
+        }
         holder._connectBtn.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                holder._connectBtn.setText("Connecting");
-                ConnectToDevice(bleDevice, holder);
+                connectedDevice = bleDevice.device;
+                MainActivity.MacAddress = connectedDevice.getAddress();
+                holder._connectBtn.setText("CONNECTED");
             }
         });
-    }
-
-
-    private void ConnectToDevice(AvailableDevice bleDevice, ViewHolder holder){
-
-            BluetoothLeService service = new BluetoothLeService();
-            service.initialize();
-            Boolean isConnected =  service.connect(bleDevice.macAddress);
-        if (isConnected){
-            holder._connectBtn.setText("CONNECTED");
-        }
-        else {
-//            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-//            builder.setTitle("Connection attempt failed");
-//            builder.setPositiveButton(android.R.string.ok, null);
-//            builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
-//            });
-//            builder.show();
-            holder._connectBtn.setText("DisCONNECT");
-        }
     }
 
     @Override
@@ -85,10 +74,6 @@ public class RecycleAvailableDeviceAdapter extends RecyclerView.Adapter<RecycleA
             _txtRssiValue = itemView.findViewById(R.id.rssiValue);
             _connectBtn = (Button) itemView.findViewById(R.id.connectBtn);
         }
-
-
-
-
 
     }
 }

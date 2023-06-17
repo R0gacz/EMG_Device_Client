@@ -1,7 +1,5 @@
 package com.project.emg_device_client;
 
-import static android.nfc.NfcAdapter.EXTRA_DATA;
-
 import android.annotation.SuppressLint;
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
@@ -9,6 +7,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
@@ -19,8 +18,9 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 
 import java.util.List;
+import java.util.UUID;
 
-class BluetoothLeService extends Service {
+public class BluetoothLeService extends Service {
 
     private Binder binder = new LocalBinder();
     private BluetoothAdapter bluetoothAdapter;
@@ -30,7 +30,6 @@ class BluetoothLeService extends Service {
     private static final int STATE_CONNECTED = 2;
 
     private int connectionState;
-
 
     class LocalBinder extends Binder {
         public BluetoothLeService getService() {
@@ -47,24 +46,25 @@ class BluetoothLeService extends Service {
             "com.example.bluetooth.le.ACTION_GATT_SERVICES_DISCOVERED";
     public final static String ACTION_DATA_AVAILABLE =
             "com.example.bluetooth.le.ACTION_DATA_AVAILABLE";
+    public final static String EXTRA_DATA =
+            "com.example.bluetooth.le.EXTRA_DATA";
+    public final static String EXTRA_CHARACTERISTIC_UUID =
+            "com.example.bluetooth.le.EXTRA_CHARACTERISTIC_UUID";
 
     public final static String UUID_DEVICE_NAME = "2A00";
     public final static String UUID_EMG_MEASUREMENT = "634f7246-d598-46d7-9e10-521163769297";
     public final static String UUID_PLX_MEASUREMENT = "634f7246-d598-46d7-9e10-521163769296";
-    //TODO add all characteristics
 
     public List<BluetoothGattService> getSupportedGattServices() {
         if (bluetoothGatt == null) return null;
         return bluetoothGatt.getServices();
     }
 
-    @SuppressLint("MissingPermission")
-    public void readCharacteristic(BluetoothGattCharacteristic characteristic) {
-        if (bluetoothGatt == null) {
-            Log.w(TAG, "BluetoothGatt not initialized");
-            return;
-        }
-        bluetoothGatt.readCharacteristic(characteristic);
+    public BluetoothGattCharacteristic getCharacteristicByUuid(String serviceUuid, String characteristicUuid){
+        if (bluetoothGatt == null) return null;
+        BluetoothGattService service = bluetoothGatt.getService(UUID.fromString(serviceUuid));
+        if (service == null) return null;
+        return service.getCharacteristic(UUID.fromString(characteristicUuid));
     }
 
     @Nullable
@@ -80,6 +80,31 @@ class BluetoothLeService extends Service {
             return false;
         }
         return true;
+    }
+
+
+    @SuppressLint("MissingPermission")
+    public void readCharacteristic(BluetoothGattCharacteristic characteristic) {
+        if (bluetoothGatt == null) {
+            Log.w(TAG, "BluetoothGatt not initialized");
+            return;
+        }
+        bluetoothGatt.readCharacteristic(characteristic);
+    }
+
+    @SuppressLint("MissingPermission")
+    public void setCharacteristicNotification(BluetoothGattCharacteristic characteristic,
+                                              boolean enabled) {
+        if (bluetoothAdapter == null || bluetoothGatt == null) {
+            Log.w(TAG, "BluetoothAdapter not initialized");
+            return;
+        }
+            BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
+                    UUID.fromString(GattAttributes.CLIENT_CHARACTERISTIC_CONFIG));
+            descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+            bluetoothGatt.writeDescriptor(descriptor);
+
+        bluetoothGatt.setCharacteristicNotification(characteristic, enabled);
     }
 
     @SuppressLint("MissingPermission")
@@ -98,12 +123,6 @@ class BluetoothLeService extends Service {
             return false;
         }
     }
-
-    private void broadcastUpdate(final String action) {
-        final Intent intent = new Intent(action);
-        sendBroadcast(intent);
-    }
-
 
     private final BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback() {
         @SuppressLint("MissingPermission")
@@ -151,37 +170,27 @@ class BluetoothLeService extends Service {
         }
     };
 
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        return START_STICKY;
+    }
+
+    private void broadcastUpdate(final String action) {
+        final Intent intent = new Intent(action);
+        sendBroadcast(intent);
+    }
+
     private void broadcastUpdate(final String action,
                                  final BluetoothGattCharacteristic characteristic) {
 
         final Intent intent = new Intent(action);
-
-        //TODO add handling for all GATT characteristics
-        if (UUID_EMG_MEASUREMENT.equals(characteristic.getUuid())) {
-            int format = BluetoothGattCharacteristic.FORMAT_UINT16;
-            final int emgValue = characteristic.getIntValue(format, 1);
-            Log.d(TAG, String.format("Received EMG: %d", emgValue));
-            intent.putExtra(EXTRA_DATA, String.valueOf(emgValue));
+        final byte[] data = characteristic.getValue();
+        if (data != null && data.length > 0) {
+            intent.putExtra(EXTRA_CHARACTERISTIC_UUID, characteristic.getUuid().toString());
+            intent.putExtra(EXTRA_DATA, data);
+            sendBroadcast(intent);
         }
-        if (UUID_PLX_MEASUREMENT.equals(characteristic.getUuid())) {
-            int format = BluetoothGattCharacteristic.FORMAT_UINT16;
-            final int plxValue = characteristic.getIntValue(format, 1);
-            Log.d(TAG, String.format("Received EMG: %d", plxValue));
-            intent.putExtra(EXTRA_DATA, String.valueOf(plxValue));
-        } else {
-            // For all other profiles, writes the data formatted in HEX.
-            final byte[] data = characteristic.getValue();
-            if (data != null && data.length > 0) {
-                final StringBuilder stringBuilder = new StringBuilder(data.length);
-                for(byte byteChar : data)
-                    stringBuilder.append(String.format("%02X ", byteChar));
-                intent.putExtra(EXTRA_DATA, new String(data) + "\n" +
-                        stringBuilder.toString());
-            }
-        }
-        sendBroadcast(intent);
     }
-
 
     @Override
     public boolean onUnbind(Intent intent) {
@@ -197,6 +206,16 @@ class BluetoothLeService extends Service {
         bluetoothGatt.close();
         bluetoothGatt = null;
     }
+
+    @SuppressLint("MissingPermission")
+    public void disconnect() {
+        if (bluetoothAdapter == null || bluetoothGatt == null) {
+            Log.w(TAG, "BluetoothAdapter not initialized");
+            return;
+        }
+        bluetoothGatt.disconnect();
+    }
+
 }
 
 
