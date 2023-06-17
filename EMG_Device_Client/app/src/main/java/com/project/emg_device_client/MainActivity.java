@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -23,7 +24,6 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -34,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
 
     private LineChart chart;
     private Button save, refresh, remove, startMeasureButton;
-    FloatingActionButton addDeviceButton;
+    Button addDeviceButton;
     private ArrayList<Entry> emgData, plxData;
     private EmgDeviceService emgDeviceService;
     public static String MacAddress;
@@ -90,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
         LineData data = new LineData(dataSet);
 
         Description description = new Description();
-        description.setText("Activity chart");
+        description.setText("");
         description.setTextSize(25);
 
         Legend legend = chart.getLegend();
@@ -102,7 +102,14 @@ public class MainActivity extends AppCompatActivity {
         legend.setXEntrySpace(30);
 
         chart.setDescription(description);
-        chart.setBackgroundColor(Color.WHITE);
+        int nightModeFlags = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+        if (nightModeFlags == Configuration.UI_MODE_NIGHT_YES) {
+            // The theme is currently set to dar
+            chart.setBackgroundColor(Color.BLACK);
+        } else {
+            // The theme is currently set to light
+            chart.setBackgroundColor(Color.WHITE);
+        }
         chart.setNoDataText("No data found");
         chart.setDrawBorders(true);
         chart.setData(data);
