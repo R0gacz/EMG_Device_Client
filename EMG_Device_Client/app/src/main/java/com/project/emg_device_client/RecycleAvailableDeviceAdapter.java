@@ -50,16 +50,11 @@ public class RecycleAvailableDeviceAdapter extends RecyclerView.Adapter<RecycleA
         holder._connectBtn.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 connectedDevice = bleDevice.device;
+                MainActivity.MacAddress = connectedDevice.getAddress();
                 holder._connectBtn.setText("CONNECTED");
-                connectedDevice = bleDevice.device;
-//                ConnectToDevice(bleDevice, holder);
             }
         });
     }
-
-//    private void ConnectToDevice(AvailableDevice bleDevice, ViewHolder holder){
-//
-//    }
 
     @Override
     public int getItemCount() {

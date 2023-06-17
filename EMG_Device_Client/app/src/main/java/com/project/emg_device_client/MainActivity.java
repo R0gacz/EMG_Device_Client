@@ -1,8 +1,5 @@
 package com.project.emg_device_client;
 
-import static androidx.constraintlayout.helper.widget.MotionEffect.TAG;
-
-import android.bluetooth.BluetoothGattCharacteristic;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -13,7 +10,6 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
@@ -40,23 +36,18 @@ public class MainActivity extends AppCompatActivity {
     private LineChart chart;
     private Button save, refresh, remove, startMeasureButton;
     FloatingActionButton addDeviceButton;
-    private ArrayList<Entry> data1, data2;
-    private BluetoothLeService bleLeService;
-    private String connectedDeviceAddres;
+    private ArrayList<Entry> emgData, plxData;
+    private EmgDeviceService emgDeviceService;
+    public static String MacAddress;
 
-    private final ServiceConnection mServiceConnection = new ServiceConnection() {
+    private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder service) {
-            bleLeService = ((BluetoothLeService.LocalBinder) service).getService();
-            if (!bleLeService.initialize()) {
-                return;
-            }
-            // Automatically connects to the device upon successful start-up initialization.
-            bleLeService.connect(connectedDeviceAddres);
+            emgDeviceService = ((EmgDeviceService.DeviceLocalBinder) service).getService();
         }
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
-            bleLeService = null;
+            emgDeviceService = null;
         }
     };
 
@@ -71,41 +62,26 @@ public class MainActivity extends AppCompatActivity {
         refresh = findViewById(R.id.refresh);
         remove = findViewById(R.id.remove);
         startMeasureButton = findViewById(R.id.StartMeasureButton);
-        addDeviceButton = (FloatingActionButton) findViewById(R.id.addDeviceButton);
-        bleLeService = null;
-        connectedDeviceAddres = null;
+        addDeviceButton = findViewById(R.id.addDeviceButton);
 
-        data1 = new ArrayList<>();
-        data1.add(new Entry(0,1));
-        data1.add(new Entry(1,2));
-        data1.add(new Entry(2,4));
-        data1.add(new Entry(3, 2));
-        data1.add(new Entry(4, 2));
+        emgData = new ArrayList<>();
+        emgData.add(new Entry(0,0));
 
-        data2 = new ArrayList<>();
-        data2.add(new Entry(0,3));
-        data2.add(new Entry(1,0));
-        data2.add(new Entry(2, -3));
+        plxData = new ArrayList<>();
+        plxData.add(new Entry(0,0));
+
 
         setupChart();
         setupLiseners();
-
-        addDeviceButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                startActivityForResult(new Intent(MainActivity.this,
-                        ScanForBleDeviceActivity.class), 1);
-            }
-        });
 
     }
 
     private void setupChart()
     {
         chart.animateX(3000);
-        LineDataSet lineDataSet1 = new LineDataSet(data1, "Set 1");
+        LineDataSet lineDataSet1 = new LineDataSet(emgData, "Set 1");
         lineDataSet1.setColor(Color.CYAN);
-        LineDataSet lineDataSet2 = new LineDataSet(data2, "Set 2");
+        LineDataSet lineDataSet2 = new LineDataSet(plxData, "Set 2");
         lineDataSet2.setColor(Color.MAGENTA);
 
         ArrayList<ILineDataSet> dataSet = new ArrayList<>();
@@ -162,19 +138,26 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
         startMeasureButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                startMeasure();
+                StartMeasure();
+            }
+        });
+
+        addDeviceButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivityForResult(new Intent(MainActivity.this,
+                        ScanForBleDeviceActivity.class), 1);
             }
         });
     }
 
     private void refreshChart()
     {
-        LineDataSet lineDataSet1 = new LineDataSet(data1, "Set 1");
+        LineDataSet lineDataSet1 = new LineDataSet(emgData, "Set 1");
         lineDataSet1.setColor(Color.CYAN);
-        LineDataSet lineDataSet2 = new LineDataSet(data2, "Set 2");
+        LineDataSet lineDataSet2 = new LineDataSet(plxData, "Set 2");
         lineDataSet2.setColor(Color.MAGENTA);
 
         ArrayList<ILineDataSet> dataSet = new ArrayList<>();
@@ -204,14 +187,14 @@ public class MainActivity extends AppCompatActivity {
             json_1 = sharedPreferences.getString("data1", null);
             temp = gson.fromJson(json_1, type);
         }
-        temp.addAll( data1 );
+        temp.addAll( emgData );
         json_1 = gson.toJson( temp );
 
         if(sharedPreferences.contains("data2")) {
             json_2 = sharedPreferences.getString("data2", null);
             temp_2 = gson.fromJson(json_2, type);
         }
-        temp_2.addAll( data2 );
+        temp_2.addAll( plxData );
         json_2 = gson.toJson( temp_2 );
 
         editor.putString( "data1", json_1 );
@@ -229,11 +212,11 @@ public class MainActivity extends AppCompatActivity {
 
         if(sharedPreferences.contains("data1")) {
             String json = sharedPreferences.getString("data1", null);
-            data1 = gson.fromJson(json, type);
+            emgData = gson.fromJson(json, type);
         }
         if(sharedPreferences.contains("data2")) {
             String json_2 = sharedPreferences.getString("data2", null);
-            data2 = gson.fromJson(json_2, type);
+            plxData = gson.fromJson(json_2, type);
         }
     }
 
@@ -248,92 +231,69 @@ public class MainActivity extends AppCompatActivity {
         editor.apply();
     }
 
-    public void startMeasure(){
-        if (bleLeService == null) return;
-        BluetoothGattCharacteristic currTime = bleLeService.getCharacteristicByUuid(GattAttributes.UUID_CURRENT_TIME_SERVICE, GattAttributes.UUID_CURRENT_TIME);
-        BluetoothGattCharacteristic emgMeasurment = bleLeService.getCharacteristicByUuid(GattAttributes.UUID_TIMESTAMPED_DATA_SERVICE, GattAttributes.UUID_EMG_MEASUREMENT);
-        BluetoothGattCharacteristic plxMeasurment = bleLeService.getCharacteristicByUuid(GattAttributes.UUID_TIMESTAMPED_DATA_SERVICE, GattAttributes.UUID_PLX_MEASUREMENT);
-
-        if (currTime != null) bleLeService.setCharacteristicNotification(currTime,true);
-        if (emgMeasurment != null) bleLeService.setCharacteristicNotification(emgMeasurment,true);
-        if (plxMeasurment != null) bleLeService.setCharacteristicNotification(plxMeasurment,true);
-    }
-
-    private void addValueToMeasureArray(String characteristicUuid, byte[] data){
-
-        int timestamp = 0;
-        int value = 0;
-
-        int length = data.length;
-
-        for (int i = 0; i < 8; i++) {
-            data[length - i - 1] = (byte) (timestamp & 0xFF);
-            timestamp >>= 8;
+    private void StartMeasure(){
+        if(emgDeviceService != null){
+            emgDeviceService.startTimeDataLogging();
+            emgDeviceService.startEmgDataLogging();
+            emgDeviceService.startPlxDataLogging();
         }
-
-        if(characteristicUuid.equals(GattAttributes.UUID_EMG_MEASUREMENT)) data1.add(new Entry(timestamp, value));
-        if(characteristicUuid.equals(GattAttributes.UUID_PLX_MEASUREMENT)) data2.add(new Entry(timestamp, value));
+        else
+        {
+            //TODO device disconnected info
+        }
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if (requestCode == 1) {
-//            if (resultCode == Activity.RESULT_OK) {
-
-//                String addres = data.("connectedBleDevice");  TODO get data as null
-                connectedDeviceAddres = "58:8E:81:A5:46:9A";
-                if(connectedDeviceAddres == null) return;
-                Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
-                bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
-//            }
-        }
+    protected void onDestroy() {
+        super.onDestroy();
+        unbindService(serviceConnection);
+        emgDeviceService = null;
     }
-
-    private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            final String action = intent.getAction();
-            if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
-//                mConnected = true;
-//                updateConnectionState(R.string.connected);
-                invalidateOptionsMenu();
-            } else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
-//                mConnected = false;
-//                updateConnectionState(R.string.disconnected);
-                invalidateOptionsMenu();
-//            } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
-//                // Show all the supported services and characteristics on the user interface.
-//                displayGattServices(mBluetoothLeService.getSupportedGattServices());
-            } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
-                String[] data = intent.getStringExtra(BluetoothLeService.EXTRA_DATA).split("\n");
-                addValueToMeasureArray(data[0], data[1].getBytes());
-            }
-        }
-    };
 
     protected void onResume() {
         super.onResume();
-        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
-        if (bleLeService != null) {
-            final boolean result = bleLeService.connect(connectedDeviceAddres);
-            Log.d(TAG, "Connect request result=" + result);
+        registerReceiver(dataUpdateReceiver, makeDataUpdateIntentFilter());
+        if(MacAddress != null && emgDeviceService == null) {
+            Intent deviceServiceIntent = new Intent(this, EmgDeviceService.class);
+            bindService(deviceServiceIntent, serviceConnection, BIND_AUTO_CREATE);
         }
     }
     @Override
     protected void onPause() {
         super.onPause();
-        unregisterReceiver(mGattUpdateReceiver);
+        unregisterReceiver(dataUpdateReceiver);
     }
 
-    private static IntentFilter makeGattUpdateIntentFilter() {
+    private final BroadcastReceiver dataUpdateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+            byte[] data = intent.getByteArrayExtra(action);
+            Entry entry;
+          switch (action){
+                case EmgDeviceService.ACTION_EMG_DATA_RECEIVED:
+                    entry = emgDeviceService.EmgDataBytesToEntry(data);
+                    emgData.add(entry);
+                    break;
+                case EmgDeviceService.ACTION_PLX_DATA_RECEIVED:
+                    entry = emgDeviceService.PlxDataBytesToEntry(data);
+                    plxData.add(entry);
+                    break;
+              default:
+                    break;
+
+            }
+            if (EmgDeviceService.ACTION_EMG_DATA_RECEIVED.equals(action)) {
+
+            }
+        }
+    };
+
+    private static IntentFilter makeDataUpdateIntentFilter() {
         final IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(BluetoothLeService.ACTION_GATT_CONNECTED);
-        intentFilter.addAction(BluetoothLeService.ACTION_GATT_DISCONNECTED);
-        intentFilter.addAction(BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED);
-        intentFilter.addAction(BluetoothLeService.ACTION_DATA_AVAILABLE);
+        intentFilter.addAction(EmgDeviceService.ACTION_EMG_DATA_RECEIVED);
+        intentFilter.addAction(EmgDeviceService.ACTION_PLX_DATA_RECEIVED);
+        intentFilter.addAction(EmgDeviceService.ACTION_TIME_DATA_RECEIVED);
         return intentFilter;
     }
-
 }

@@ -48,6 +48,8 @@ public class BluetoothLeService extends Service {
             "com.example.bluetooth.le.ACTION_DATA_AVAILABLE";
     public final static String EXTRA_DATA =
             "com.example.bluetooth.le.EXTRA_DATA";
+    public final static String EXTRA_CHARACTERISTIC_UUID =
+            "com.example.bluetooth.le.EXTRA_CHARACTERISTIC_UUID";
 
     public final static String UUID_DEVICE_NAME = "2A00";
     public final static String UUID_EMG_MEASUREMENT = "634f7246-d598-46d7-9e10-521163769297";
@@ -59,7 +61,6 @@ public class BluetoothLeService extends Service {
     }
 
     public BluetoothGattCharacteristic getCharacteristicByUuid(String serviceUuid, String characteristicUuid){
-        List<BluetoothGattService> services = bluetoothGatt.getServices();
         if (bluetoothGatt == null) return null;
         BluetoothGattService service = bluetoothGatt.getService(UUID.fromString(serviceUuid));
         if (service == null) return null;
@@ -183,17 +184,13 @@ public class BluetoothLeService extends Service {
                                  final BluetoothGattCharacteristic characteristic) {
 
         final Intent intent = new Intent(action);
-            final byte[] data = characteristic.getValue();
-            if (data != null && data.length > 0) {
-                final StringBuilder stringBuilder = new StringBuilder(data.length);
-                for(byte byteChar : data)
-                    stringBuilder.append(String.format("%02X ", byteChar));
-                intent.putExtra(EXTRA_DATA, characteristic.getUuid().toString() + "\n" +
-                        stringBuilder.toString());
+        final byte[] data = characteristic.getValue();
+        if (data != null && data.length > 0) {
+            intent.putExtra(EXTRA_CHARACTERISTIC_UUID, characteristic.getUuid().toString());
+            intent.putExtra(EXTRA_DATA, data);
+            sendBroadcast(intent);
         }
-        sendBroadcast(intent);
     }
-
 
     @Override
     public boolean onUnbind(Intent intent) {

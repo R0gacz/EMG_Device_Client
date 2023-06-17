@@ -1,7 +1,5 @@
 package com.project.emg_device_client;
 
-import static androidx.constraintlayout.helper.widget.MotionEffect.TAG;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -12,17 +10,13 @@ import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Looper;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
@@ -30,8 +24,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
-import com.github.mikephil.charting.data.Entry;
 
 import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
@@ -46,7 +38,6 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
     BluetoothLeScanner btLeScanner;
     Button startScanningButton;
     Button gattServiceButton;
-    Button startMeasureButton;
     RecyclerView recyclerAvailableDevices;
     RecycleAvailableDeviceAdapter availableDeviceAdapter;
     private static final int REQUEST_ENABLE_BT = 1;
@@ -65,15 +56,11 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_scan_for_ble_device);
 
-
-        Measurement.plxData.add(new Entry(5, 2));
-
         recyclerAvailableDevices = findViewById(R.id.recyclerAvailableDevices);
         recyclerAvailableDevices.setLayoutManager(new LinearLayoutManager(this));
 
         availableDeviceAdapter = new RecycleAvailableDeviceAdapter(this, arrAvailebleDev);
         recyclerAvailableDevices.setAdapter(availableDeviceAdapter);
-
 
         gattServiceButton = (Button) findViewById(R.id.ConnectToGattServiceButton);
         gattServiceButton.setOnClickListener(new View.OnClickListener() {
@@ -126,23 +113,6 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
         }
         startActivityForResult(intent, 1);
     }
-
-    private final ServiceConnection mServiceConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName componentName, IBinder service) {
-            bleService = ((BluetoothLeService.LocalBinder) service).getService();
-            if (!bleService.initialize()) {
-                Log.e(TAG, "Unable to initialize Bluetooth");
-                finish();
-            }
-            // Automatically connects to the device upon successful start-up initialization.
-            bleService.connect(availableDeviceAdapter.connectedDevice.getAddress());
-        }
-        @Override
-        public void onServiceDisconnected(ComponentName componentName) {
-            bleService = null;
-        }
-    };
 
     private void PermissionRequestLauncher() {
         if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -226,7 +196,6 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
     });
         builder.show();
 }
-
     public void changeScanningStatus() {
         if (!startScanningButton.isSelected()) {
             arrAvailebleDev.clear();
@@ -255,7 +224,6 @@ public class ScanForBleDeviceActivity extends AppCompatActivity {
         }
     }
 
-    // Device scan callback.
     private ScanCallback leScanCallback = new ScanCallback() {
         @SuppressLint("MissingPermission")
         @Override
