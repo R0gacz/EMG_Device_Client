@@ -29,7 +29,6 @@ import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -155,21 +154,39 @@ public class MainActivity extends AppCompatActivity {
 
     private void refreshChart()
     {
-        LineDataSet lineDataSet1 = new LineDataSet(emgData, "Set 1");
-        lineDataSet1.setColor(Color.CYAN);
-        LineDataSet lineDataSet2 = new LineDataSet(plxData, "Set 2");
-        lineDataSet2.setColor(Color.MAGENTA);
-
         ArrayList<ILineDataSet> dataSet = new ArrayList<>();
-        dataSet.add(lineDataSet1);
-        dataSet.add(lineDataSet2);
+        Boolean isUpdated = false;
+        if(!emgData.isEmpty() )
+        {
+            LineDataSet lineDataSet1 = new LineDataSet(emgData, "EMG result");
+            lineDataSet1.setColor(Color.CYAN);
+            dataSet.add(lineDataSet1);
 
-        LineData data = new LineData(dataSet);
 
-        chart.setData(data);
+            isUpdated = true;
+        }
+        if(!plxData.isEmpty())
+        {
+            LineDataSet lineDataSet2 = new LineDataSet(plxData, "Pulse");
+            lineDataSet2.setColor(Color.MAGENTA);
+            dataSet.add(lineDataSet2);
 
-        chart.notifyDataSetChanged();
-        chart.invalidate();
+            isUpdated = true;
+        }
+        if(isUpdated)
+        {
+            LineData data = new LineData(dataSet);
+            chart.animateX(3000);
+            chart.setData(data);
+
+            chart.notifyDataSetChanged();
+            chart.invalidate();
+        }
+        else
+        {
+            Toast.makeText(getApplicationContext(), "No update", Toast.LENGTH_LONG).show();
+        }
+
     }
 
     private void saveData()
@@ -205,7 +222,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void reloadData()
     {
-        Type type = new TypeToken<List<String>>() {}.getType();
+        Type type = new TypeToken<ArrayList<Entry>>()  {}.getType();
 
         SharedPreferences sharedPreferences = getSharedPreferences("Data",MODE_PRIVATE);
         Gson gson = new Gson();
