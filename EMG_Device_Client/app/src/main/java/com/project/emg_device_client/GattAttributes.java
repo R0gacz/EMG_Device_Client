@@ -36,6 +36,11 @@ public class GattAttributes {
         attributes.put(UUID_CURRENT_TIME, "Current Time");
         attributes.put(UUID_CURRENT_TIME, "Current Time");
     }
+
+    public static String getAttributesName(String uuid){
+        return attributes.get(uuid);
+    }
+
     public static String lookup(String uuid, String defaultName) {
         String name = attributes.get(uuid);
         return name == null ? defaultName : name;

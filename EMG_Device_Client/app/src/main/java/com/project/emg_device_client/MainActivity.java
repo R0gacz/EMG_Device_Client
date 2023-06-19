@@ -37,7 +37,6 @@ public class MainActivity extends AppCompatActivity {
     Button addDeviceButton;
     private ArrayList<Entry> emgData, plxData;
     private EmgDeviceService emgDeviceService;
-    public static String MacAddress;
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -271,21 +270,25 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         unbindService(serviceConnection);
-        emgDeviceService = null;
     }
 
     protected void onResume() {
         super.onResume();
         registerReceiver(dataUpdateReceiver, makeDataUpdateIntentFilter());
-        if(MacAddress != null && emgDeviceService == null) {
+        if(EmgDeviceService.MacAddress != null && emgDeviceService == null) {
             Intent deviceServiceIntent = new Intent(this, EmgDeviceService.class);
             bindService(deviceServiceIntent, serviceConnection, BIND_AUTO_CREATE);
         }
     }
+
     @Override
     protected void onPause() {
         super.onPause();
         unregisterReceiver(dataUpdateReceiver);
+        if(emgDeviceService != null) {
+            unbindService(serviceConnection);
+        }
+
     }
 
     private final BroadcastReceiver dataUpdateReceiver = new BroadcastReceiver() {
@@ -303,11 +306,12 @@ public class MainActivity extends AppCompatActivity {
                     entry = emgDeviceService.PlxDataBytesToEntry(data);
                     plxData.add(entry);
                     break;
+              case EmgDeviceService.ACTION_TIME_DATA_RECEIVED:
+                  entry = emgDeviceService.PlxDataBytesToEntry(data);
+                  plxData.add(entry);
+                  break;
               default:
                     break;
-
-            }
-            if (EmgDeviceService.ACTION_EMG_DATA_RECEIVED.equals(action)) {
 
             }
         }

@@ -23,9 +23,10 @@ import java.util.Calendar;
 
 public class EmgDeviceService extends Service {
 
+    public static String MacAddress;
+
     private Binder binder = new DeviceLocalBinder();
     private BluetoothLeService bleLeService;
-    private String _macAAdress;
 
     public final static String ACTION_EMG_DATA_RECEIVED =
             "EmgDeviceService.ACTION_EMG_DATA_RECEIVED";
@@ -47,11 +48,12 @@ public class EmgDeviceService extends Service {
             if (!bleLeService.initialize()) {
                 return;
             }
-            bleLeService.connect(_macAAdress);
+            bleLeService.connect(MacAddress);
         }
 
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
+
             bleLeService = null;
         }
     };
@@ -60,11 +62,9 @@ public class EmgDeviceService extends Service {
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        _macAAdress = MainActivity.MacAddress;
-
         registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
         if (bleLeService != null) {
-            final boolean result = bleLeService.connect(_macAAdress);
+            final boolean result = bleLeService.connect(MacAddress);
             Log.d(TAG, "Connect request result=" + result);
         }
         Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
