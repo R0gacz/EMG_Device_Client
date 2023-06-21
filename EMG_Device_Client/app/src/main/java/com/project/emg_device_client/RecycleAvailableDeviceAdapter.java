@@ -42,7 +42,7 @@ public class RecycleAvailableDeviceAdapter extends RecyclerView.Adapter<RecycleA
         holder._txtDeviceName.setText(bleDevice.name);
         holder._txtMacAddress.setText(bleDevice.macAddress);
         holder._txtRssiValue.setText(Integer.toString(bleDevice.rssi));
-        if (EmgDeviceService.MacAddress != null) {
+        if (EmgDeviceService.MacAddress != null && connectedDevice != null) {
             if ((EmgDeviceService.MacAddress).equals(bleDevice.device.getAddress())) {
                 holder._connectBtn.setSelected(true);
             holder._connectBtn.setText("DISCONNECT");

@@ -21,7 +21,9 @@ public class GattAttributes {
     public static final String UUID_MANUFACTURER_NAME_STRING = "00002a29-0000-1000-8000-00805f9b34fb";
     public static final String UUID_SYSTEM_ID = "00002a23-0000-1000-8000-00805f9b34fb";
     public static final String UUID_EMG_MEASUREMENT = "634f7246-d598-46d7-9e10-521163769297";
-    public static final String UUID_PLX_MEASUREMENT = "634f7246-d598-46d7-9e10-521163769296";
+    public static final String UUID_PULSE_MEASUREMENT = "b6d1d0dc-86b6-4d1e-96f6-7e9dfb632c96";
+    public static final String UUID_SA02_MEASUREMENT = "d0e8e624-e5fd-4356-a531-5df15f37830d";
+    public static final String UUID_TIMESTAMP = "2fe487f1-2011-4280-bc1f-deae24311032";
     public static final String UUID_CURRENT_TIME = "00002a2b-0000-1000-8000-00805f9b34fb";
     public static final String UUID_LOCAL_TIME_INFO = "00002a0f-0000-1000-8000-00805f9b34fb";
     public static final String UUID_TIME_UPDATE_CONTROL_POINT = "00002a16-0000-1000-8000-00805f9b34fb";
@@ -46,7 +48,9 @@ public class GattAttributes {
         attributes.put(UUID_MANUFACTURER_NAME_STRING, "Manufacturer Name String");
         attributes.put(UUID_SYSTEM_ID, "System ID");
         attributes.put(UUID_EMG_MEASUREMENT, "EMG Measurement");
-        attributes.put(UUID_PLX_MEASUREMENT, "PLX Measurement");
+        attributes.put(UUID_PULSE_MEASUREMENT, "Pulse Measurement");
+        attributes.put(UUID_SA02_MEASUREMENT, "Sa02 Measurement");
+        attributes.put(UUID_TIMESTAMP, "Device lifetime time in Miliseconds");
         attributes.put(UUID_CURRENT_TIME, "Current Time");
         attributes.put(UUID_LOCAL_TIME_INFO, "Local Time Information");
         attributes.put(UUID_REFERENCE_TIME_INFO, "Reference Time Information");
