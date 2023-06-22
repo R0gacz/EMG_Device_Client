@@ -42,16 +42,28 @@ public class RecycleAvailableDeviceAdapter extends RecyclerView.Adapter<RecycleA
         holder._txtDeviceName.setText(bleDevice.name);
         holder._txtMacAddress.setText(bleDevice.macAddress);
         holder._txtRssiValue.setText(Integer.toString(bleDevice.rssi));
-        if (connectedDevice != null) {
-            if ((connectedDevice.getAddress()).equals(bleDevice.device.getAddress()))
-                holder._connectBtn.setText("CONNECTED");
+        if (EmgDeviceService.MacAddress != null && connectedDevice != null) {
+            if ((EmgDeviceService.MacAddress).equals(bleDevice.device.getAddress())) {
+                holder._connectBtn.setSelected(true);
+            holder._connectBtn.setText("DISCONNECT");
+        }
             else holder._connectBtn.setText("CONNECT");
         }
         holder._connectBtn.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                connectedDevice = bleDevice.device;
-                MainActivity.MacAddress = connectedDevice.getAddress();
-                holder._connectBtn.setText("CONNECTED");
+                if(!holder._connectBtn.isSelected()) {
+                    holder._connectBtn.setSelected(true);
+                    connectedDevice = bleDevice.device;
+                    EmgDeviceService.MacAddress = connectedDevice.getAddress();
+                    holder._connectBtn.setText("DISCONNECT");
+                }else{
+                    holder._connectBtn.setSelected(false);
+                    EmgDeviceService.MacAddress = null;
+                    connectedDevice = null;
+                    holder._connectBtn.setText("CONNECT");
+
+                }
+
             }
         });
     }

@@ -6,76 +6,97 @@
     android:layout_height="match_parent">
 
 
+    <LinearLayout
+        android:id="@+id/linearLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <TextView
+            android:id="@+id/DeviceState"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:text="@string/disconnected_emg_device" />
+
+        <Button
+            android:id="@+id/addDeviceButton"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:background="@drawable/round_shape"
+            android:foreground="@android:drawable/stat_sys_data_bluetooth"
+            android:foregroundTint="@color/blue"
+            />
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="40dp" />
+
+        <Button
+            android:id="@+id/StartMeasureButton"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:background="@drawable/round_shape"
+            android:foreground="@android:drawable/ic_media_play"
+            android:foregroundTint="@color/blue"
+            />
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="40dp" />
+
+        <Button
+            android:id="@+id/save"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:background="@drawable/round_shape"
+            android:foreground="@android:drawable/ic_menu_save"
+            android:foregroundTint="@color/blue"
+            />
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="40dp" />
+
+        <Button
+            android:id="@+id/refresh"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:background="@drawable/round_shape"
+            android:foreground="@android:drawable/ic_popup_sync"
+            android:foregroundTint="@color/blue"
+            />
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="40dp" />
+
+        <Button
+            android:id="@+id/remove"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:background="@drawable/round_shape"
+            android:foreground="@android:drawable/ic_delete"
+            android:foregroundTint="@color/blue"
+            />
+
+    </LinearLayout>
+
     <com.github.mikephil.charting.charts.LineChart
         android:id="@+id/chart1"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginStart="20dp"
+        android:layout_marginStart="80dp"
         android:layout_marginTop="20dp"
         android:layout_marginEnd="20dp"
-        android:layout_marginBottom="60dp"
+        android:layout_marginBottom="20dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintStart_toStartOf="@+id/linearLayout"
+        app:layout_constraintTop_toTopOf="parent">
 
-    <Button
-        android:id="@+id/save"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:text="@string/save"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/chart1" />
-
-    <Button
-        android:id="@+id/refresh"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="20dp"
-        android:text="@string/refresh"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/chart1" />
-
-    <Button
-        android:id="@+id/remove"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/remove"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.62"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.991" />
-
-    <Button
-        android:id="@+id/StartMeasureButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Start"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/remove"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toEndOf="@+id/save"
-        app:layout_constraintTop_toBottomOf="@+id/chart1" />
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/addDeviceButton"
-        android:layout_width="56dp"
-        android:layout_height="0dp"
-        android:layout_marginTop="32dp"
-        android:layout_marginEnd="32dp"
-        android:clickable="true"
-        android:contentDescription="@string/add_device_button"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@android:drawable/ic_menu_add" />
+    </com.github.mikephil.charting.charts.LineChart>
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -51,10 +51,6 @@ public class BluetoothLeService extends Service {
     public final static String EXTRA_CHARACTERISTIC_UUID =
             "com.example.bluetooth.le.EXTRA_CHARACTERISTIC_UUID";
 
-    public final static String UUID_DEVICE_NAME = "2A00";
-    public final static String UUID_EMG_MEASUREMENT = "634f7246-d598-46d7-9e10-521163769297";
-    public final static String UUID_PLX_MEASUREMENT = "634f7246-d598-46d7-9e10-521163769296";
-
     public List<BluetoothGattService> getSupportedGattServices() {
         if (bluetoothGatt == null) return null;
         return bluetoothGatt.getServices();
@@ -99,12 +95,17 @@ public class BluetoothLeService extends Service {
             Log.w(TAG, "BluetoothAdapter not initialized");
             return;
         }
-            BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
-                    UUID.fromString(GattAttributes.CLIENT_CHARACTERISTIC_CONFIG));
-            descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-            bluetoothGatt.writeDescriptor(descriptor);
-
+        BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
+                UUID.fromString(GattAttributes.CLIENT_CHARACTERISTIC_CONFIG));
+        if(descriptor != null){
         bluetoothGatt.setCharacteristicNotification(characteristic, enabled);
+
+        descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+        bluetoothGatt.writeDescriptor(descriptor);
+    }
+        else{
+//            TODO characteristic cant be notified info
+        }
     }
 
     @SuppressLint("MissingPermission")

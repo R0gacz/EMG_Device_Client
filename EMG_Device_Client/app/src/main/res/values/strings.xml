@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">EMG_Device_Client</string>
+    <string name="app_name">EMG Device Client</string>
     <string name="press_to_add_device">Press + to add device</string>
     <string name="add_device_button">AddDeviceButton</string>
     <string name="connect">Connect</string>
@@ -22,4 +22,5 @@
     <string name="menu_disconnect">Disconnected</string>
     <string name="gatt_service">Gatt Service</string>
     <string name="start_measure">Start Measure</string>
+    <string name="disconnected_emg_device">Disconnected</string>
 </resources>

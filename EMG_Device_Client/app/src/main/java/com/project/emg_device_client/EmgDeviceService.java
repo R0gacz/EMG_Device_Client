@@ -19,20 +19,24 @@ import androidx.annotation.Nullable;
 
 import com.github.mikephil.charting.data.Entry;
 
-import java.util.Calendar;
 
 public class EmgDeviceService extends Service {
 
+    public static String MacAddress;
+
     private Binder binder = new DeviceLocalBinder();
     private BluetoothLeService bleLeService;
-    private String _macAAdress;
+    private long startMeasureTimeInMs;
+    private Boolean firstTimeValueFlag;
 
     public final static String ACTION_EMG_DATA_RECEIVED =
             "EmgDeviceService.ACTION_EMG_DATA_RECEIVED";
-    public final static String ACTION_PLX_DATA_RECEIVED =
-            "EmgDeviceService.ACTION_PLX_DATA_RECEIVED";
-    public final static String ACTION_TIME_DATA_RECEIVED =
-            "EmgDeviceService.ACTION_TIME_DATA_RECEIVED";
+    public final static String ACTION_PULSE_DATA_RECEIVED =
+            "EmgDeviceService.ACTION_PULSE_DATA_RECEIVED";
+    public final static String ACTION_SA02_DATA_RECEIVED =
+            "EmgDeviceService.ACTION_SA02_DATA_RECEIVED";
+    public final static String ACTION_DEVICE_CONNECTION_CHANGED =
+            "EmgDeviceService.ACTION_DEVICE_CONNECTION_CHANGED";
 
     class DeviceLocalBinder extends Binder {
         public EmgDeviceService getService() {
@@ -47,11 +51,12 @@ public class EmgDeviceService extends Service {
             if (!bleLeService.initialize()) {
                 return;
             }
-            bleLeService.connect(_macAAdress);
+            bleLeService.connect(MacAddress);
         }
 
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
+
             bleLeService = null;
         }
     };
@@ -60,15 +65,15 @@ public class EmgDeviceService extends Service {
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        _macAAdress = MainActivity.MacAddress;
-
         registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
         if (bleLeService != null) {
-            final boolean result = bleLeService.connect(_macAAdress);
+            final boolean result = bleLeService.connect(MacAddress);
             Log.d(TAG, "Connect request result=" + result);
         }
         Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
         bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
+        startMeasureTimeInMs = 0;
+
         return binder;
     }
 
@@ -88,12 +93,34 @@ public class EmgDeviceService extends Service {
         startDataLogging(GattAttributes.UUID_TIMESTAMPED_DATA_SERVICE, GattAttributes.UUID_EMG_MEASUREMENT);
     }
 
-    public void startPlxDataLogging(){
-        startDataLogging(GattAttributes.UUID_TIMESTAMPED_DATA_SERVICE, GattAttributes.UUID_PLX_MEASUREMENT);
+    public void startPulseDataLogging(){
+        startDataLogging(GattAttributes.UUID_TIMESTAMPED_DATA_SERVICE, GattAttributes.UUID_PULSE_MEASUREMENT);
     }
 
-    public void startTimeDataLogging(){
-        startDataLogging(GattAttributes.UUID_CURRENT_TIME_SERVICE, GattAttributes.UUID_CURRENT_TIME);
+    public void startSa02DataLogging(){
+        startDataLogging(GattAttributes.UUID_TIMESTAMPED_DATA_SERVICE, GattAttributes.UUID_SA02_MEASUREMENT);
+    }
+
+    public void stopEmgDataLogging(){
+        stopDataLogging(GattAttributes.UUID_TIMESTAMPED_DATA_SERVICE, GattAttributes.UUID_EMG_MEASUREMENT);
+    }
+
+    public void stopPulseDataLogging(){
+        stopDataLogging(GattAttributes.UUID_TIMESTAMPED_DATA_SERVICE, GattAttributes.UUID_PULSE_MEASUREMENT);
+    }
+
+    public void stopSa02DataLogging(){
+        stopDataLogging(GattAttributes.UUID_TIMESTAMPED_DATA_SERVICE, GattAttributes.UUID_SA02_MEASUREMENT);
+    }
+
+    public void readTimestampValue(){
+        if (bleLeService == null) return;
+        BluetoothGattCharacteristic characteristic = bleLeService.getCharacteristicByUuid(GattAttributes.UUID_TIMESTAMPED_DATA_SERVICE, GattAttributes.UUID_TIMESTAMP);
+        if (characteristic != null){
+            bleLeService.setCharacteristicNotification(characteristic, false);
+            bleLeService.readCharacteristic(characteristic);
+            firstTimeValueFlag = true;
+        }
     }
 
 
@@ -102,27 +129,23 @@ public class EmgDeviceService extends Service {
         BluetoothGattCharacteristic characteristic = bleLeService.getCharacteristicByUuid(serviceUuid, characteristicUuid);
         if (characteristic != null) bleLeService.setCharacteristicNotification(characteristic, true);
     }
+
     private void stopDataLogging(String serviceUuid, String characteristicUuid) {
         if (bleLeService == null) return;
         BluetoothGattCharacteristic characteristic = bleLeService.getCharacteristicByUuid(serviceUuid, characteristicUuid);
         if (characteristic != null) bleLeService.setCharacteristicNotification(characteristic, false);
     }
 
-    private boolean _connected;
-
     private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
             if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
-//                _connected = true;
-//                invalidateOptionsMenu();
+                connectionStateUpdate(EmgDeviceState.Connecting);
             } else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
-//                _connected = false;
-//                invalidateOptionsMenu();
+                connectionStateUpdate(EmgDeviceState.Disconnected);
             } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
-                // Show all the supported services and characteristics on the user interface.
-//                displayGattServices(mBluetoothLeService.getSupportedGattServices());
+                connectionStateUpdate(EmgDeviceState.Connected);
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
                 String characteristicUuid = intent.getStringExtra(EXTRA_CHARACTERISTIC_UUID);
                 byte[] data = intent.getByteArrayExtra(BluetoothLeService.EXTRA_DATA);
@@ -137,16 +160,31 @@ public class EmgDeviceService extends Service {
             case GattAttributes.UUID_EMG_MEASUREMENT:
                 broadcastUpdate(ACTION_EMG_DATA_RECEIVED,  data);
                 break;
-            case GattAttributes.UUID_PLX_MEASUREMENT:
-                broadcastUpdate(ACTION_PLX_DATA_RECEIVED,  data);
+            case GattAttributes.UUID_PULSE_MEASUREMENT:
+                broadcastUpdate(ACTION_PULSE_DATA_RECEIVED,  data);
                 break;
-            case GattAttributes.UUID_CURRENT_TIME:
-                broadcastUpdate(ACTION_TIME_DATA_RECEIVED,  data);
+            case GattAttributes.UUID_SA02_MEASUREMENT:
+                broadcastUpdate(ACTION_SA02_DATA_RECEIVED,  data);
+                break;
+            case GattAttributes.UUID_TIMESTAMP:
+                if(firstTimeValueFlag) {
+                    startMeasureTimeInMs = (data[0] & 0xFF) << 24 |
+                        (data[1] & 0xFF) << 16 |
+                        (data[2] & 0xFF) << 8 |
+                        (data[3] & 0xFF);
+                    firstTimeValueFlag = false;
+                }
                 break;
             default:
-//                broadcastUpdate(ACTION_EMG_DATA_RECEIVED,  characteristicUuid);
                 break;
         }
+    }
+
+    private void connectionStateUpdate(EmgDeviceState state) {
+
+        final Intent intent = new Intent(ACTION_DEVICE_CONNECTION_CHANGED);
+        intent.putExtra(ACTION_DEVICE_CONNECTION_CHANGED, state.name());
+        sendBroadcast(intent);
     }
 
     private void broadcastUpdate(final String action,
@@ -173,28 +211,52 @@ public class EmgDeviceService extends Service {
 
         int length = data.length;
 
-        for (int i = 0; i < 8; i++) {
-            data[length - i - 1] = (byte) (timestamp & 0xFF);
-            timestamp >>= 8;
-        }
+//        TODO impl data parser for emg
 
-        long ms = Calendar.getInstance().getTimeInMillis();
-        return new Entry(ms, value);
+        return new Entry(timestamp, value);
     }
 
-    public Entry PlxDataBytesToEntry(byte[] data){
+    public Entry PulseDataBytesToEntry(byte[] data){
 
-        int timestamp = 0;
+        long timestamp = 0;
         int value = 0;
 
         int length = data.length;
 
-        for (int i = 0; i < 8; i++) {
-            data[length - i - 1] = (byte) (timestamp & 0xFF);
-            timestamp >>= 8;
-        }
+        value = (data[0] & 0xFF) << 24 |
+                (data[1] & 0xFF) << 16 |
+                (data[2] & 0xFF) << 8 |
+                (data[3] & 0xFF);
 
-        long ms = Calendar.getInstance().getTimeInMillis();
-        return new Entry(ms, value);
+        int ms = (data[4] & 0xFF) << 24 |
+                (data[5] & 0xFF) << 16 |
+                (data[6] & 0xFF) << 8 |
+                (data[7] & 0xFF);
+
+        timestamp = (ms - startMeasureTimeInMs)/1000;
+
+        return new Entry(timestamp, value);
+    }
+
+    public Entry Sa02DataBytesToEntry(byte[] data){
+
+        long timestamp = 0;
+        int value = 0;
+
+        int length = data.length;
+
+        value = (data[0] & 0xFF) << 24 |
+                (data[1] & 0xFF) << 16 |
+                (data[2] & 0xFF) << 8 |
+                (data[3] & 0xFF);
+
+        int ms = (data[4] & 0xFF) << 24 |
+                (data[5] & 0xFF) << 16 |
+                (data[6] & 0xFF) << 8 |
+                (data[7] & 0xFF);
+
+        timestamp = (ms - startMeasureTimeInMs)/1000;
+
+        return new Entry(timestamp, value);
     }
 }
